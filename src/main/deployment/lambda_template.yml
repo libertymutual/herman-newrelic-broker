@@ -1,0 +1,10 @@
+functionName: ${bamboo.maven.artifactId}
+zipFileName: ${bamboo.maven.artifactId}-${bamboo.maven.version}-aws.jar
+handler: com.libertymutualgroup.herman.nr.broker.NewRelicBrokerHandler
+memorySize: 512
+runtime: java8
+timeout: 120
+useKms: true
+environment:
+  - name: SPRING_PROFILES_ACTIVE
+    value: ${bamboo.deploy.environment}

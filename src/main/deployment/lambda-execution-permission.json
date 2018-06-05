@@ -1,0 +1,5 @@
+{
+  "Action": "lambda:InvokeFunction",
+  "Effect": "Allow",
+  "Principal": "*"
+}

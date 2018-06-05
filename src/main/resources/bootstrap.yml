@@ -1,0 +1,5 @@
+#SPRING CLOUD CONFIG
+spring.cloud.config.enabled: false
+
+aws:
+  region: us-east-1
