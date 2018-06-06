@@ -7,3 +7,6 @@ application and to configure alert policies and alert channels for an applicatio
 
 ## Usage
 Please see the [Herman documentation](https://github.com/libertymutual/herman) for how to set up New Relic alert configuration.
+
+## Contributing
+See [CONTRIBUTING.md](CONTRIBUTING.md)
