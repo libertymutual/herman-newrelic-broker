@@ -1,4 +1,4 @@
-# Herman RDS New Relic Broker
+# Herman New Relic Broker
 ---
 ## Objective
 This project is a Lambda that a part of the Herman ecosystem. 
