@@ -51,6 +51,7 @@ public class AlertConfigurationService {
                 ArrayNode applicationAlertsConditions = getApplicationAlertsConditions(configuration);
                 ArrayNode rdsPluginAlertsConditions = getRdsPluginAlertsConditions(configuration);
                 ArrayNode nrqlAlertsConditions = getNrqlAlertsConditions(configuration);
+                ArrayNode infrastructureAlertsConditions = getInfrastructureAlertsConditions(configuration);
 
                 Assert.isTrue(
                     applicationAlertsConditions != null || rdsPluginAlertsConditions != null || nrqlAlertsConditions != null,
@@ -104,6 +105,15 @@ public class AlertConfigurationService {
                     brokerUpdates.add(new HermanBrokerUpdate()
                             .withStatus(HermanBrokerStatus.PENDING)
                             .withMessage(String.format("%s NRQL alerts condition%s created", nrqlAlertsConditions.size(), nrqlAlertsConditions.size() > 1 ? "s" : "")));
+                }
+
+                // Create Infrastructure alerts conditions
+                if (infrastructureAlertsConditions != null) {
+                    infrastructureAlertsConditions.elements().forEachRemaining(condition -> newRelicClient.createInfrastructureAlertsConditions(policyId, condition));
+
+                    brokerUpdates.add(new HermanBrokerUpdate()
+                            .withStatus(HermanBrokerStatus.PENDING)
+                            .withMessage(String.format("%s Infrastructure alerts conditions created", infrastructureAlertsConditions.size(), infrastructureAlertsConditions.size() > 1 ? "s" : "")));
                 }
 
                 // Create alerts policy channels
@@ -196,6 +206,20 @@ public class AlertConfigurationService {
 
         } catch (Exception ex) {
             throw new RuntimeException("Error getting NRQL alerts conditions", ex);
+        }
+    }
+
+    private ArrayNode getInfrastructureAlertsConditions(NewRelicConfiguration configuration) {
+        try {
+            ObjectMapper objectMapper = new ObjectMapper();
+            ArrayNode getInfrastructureConditions = null;
+
+            if (configuration.getInfrastructureConditions() != null) {
+                getInfrastructureConditions = objectMapper.readValue(configuration.getInfrastructureConditions(), ArrayNode.class);
+            }
+            return getInfrastructureConditions;
+        } catch (Exception e) {
+            throw new RuntimeException("Error getting Infrastructure alerts conditions", e);
         }
     }
 }

@@ -26,6 +26,7 @@ public class NewRelicConfiguration {
     private String channels;
     private String rdsPluginsConditions;
     private String nrqlConditions;
+    private String infrastructureConditions;
     private String dbName;
     private String apdex;
 
@@ -61,6 +62,14 @@ public class NewRelicConfiguration {
         this.nrqlConditions = nrqlConditions;
     }
 
+    public String getInfrastructureConditions() {
+        return infrastructureConditions;
+    }
+
+    public void setInfrastructureConditions(String infrastructureConditions) {
+        this.infrastructureConditions = infrastructureConditions;
+    }
+
     public String getDbName() {
         return dbName;
     }
@@ -84,6 +93,7 @@ public class NewRelicConfiguration {
             ", channels='" + channels + '\'' +
             ", rdsPluginsConditions='" + rdsPluginsConditions + '\'' +
             ", nrqlConditions='" + nrqlConditions + '\'' +
+            ", infrastructureConditions='" + infrastructureConditions + '\'' +
             ", dbName='" + dbName + '\'' +
             ", apdex='" + apdex + '\'' +
             '}';
@@ -106,6 +116,11 @@ public class NewRelicConfiguration {
 
     public NewRelicConfiguration withNrqlConditions(final String nrqlConditions) {
         this.nrqlConditions = nrqlConditions;
+        return this;
+    }
+
+    public NewRelicConfiguration withInfrastructureConditions(final String infrastructureConditions) {
+        this.infrastructureConditions = infrastructureConditions;
         return this;
     }
 
