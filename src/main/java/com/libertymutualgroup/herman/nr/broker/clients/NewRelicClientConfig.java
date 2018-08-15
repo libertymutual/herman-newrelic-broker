@@ -17,9 +17,11 @@ package com.libertymutualgroup.herman.nr.broker.clients;
 
 import com.libertymutualgroup.herman.nr.broker.NewRelicBrokerProperties;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.http.HttpHeaders;
 import org.springframework.web.client.RestTemplate;
 
@@ -30,14 +32,23 @@ public class NewRelicClientConfig {
     NewRelicBrokerProperties properties;
 
     @Bean
+    @Primary
+    @Qualifier("nr")
     RestTemplate newRelicRestTemplate() {
         return new RestTemplateBuilder().rootUri("https://api.newrelic.com/v2").build();
+    }
+
+    @Bean
+    @Qualifier("infra")
+    RestTemplate newRelicInfrastructureRestTemplate() {
+        return new RestTemplateBuilder().rootUri("https://infra-api.newrelic.com/v2/").build();
     }
 
     @Bean
     HttpHeaders httpHeaders() {
         HttpHeaders headers = new HttpHeaders();
         headers.set("X-Api-Key", properties.getApiKey());
+        headers.set("Content-Type", "application/json");
         return headers;
     }
 }

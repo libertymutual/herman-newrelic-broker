@@ -29,6 +29,7 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -43,7 +44,12 @@ public class NewRelicClient {
     private static final String RDS_PLUGIN_GUID = "com.newrelic.aws.rds";
 
     @Autowired
+    @Qualifier("nr")
     RestTemplate newRelicRestTemplate;
+
+    @Autowired
+    @Qualifier("infra")
+    RestTemplate newRelicInfrastructureRestTemplate;
 
     @Autowired
     HttpHeaders httpHeaders;
@@ -377,6 +383,27 @@ public class NewRelicClient {
                 policyId,
                 payload.toString()),
                 ex);
+        }
+    }
+
+    public void createInfrastructureAlertsConditions(String policyId, JsonNode condition) {
+        ObjectMapper objectMapper = new ObjectMapper();
+        ObjectNode data = ((ObjectNode)condition).put("policy_id", Integer.parseInt(policyId));
+        ObjectNode payload = objectMapper.createObjectNode();
+        payload.set("data", data);
+
+        try {
+            newRelicInfrastructureRestTemplate.exchange(
+                "/alerts/conditions",
+                HttpMethod.POST,
+                new HttpEntity<JsonNode>(payload, httpHeaders),
+                Void.class
+            );
+        } catch (Exception e) {
+            throw new RuntimeException(String.format("Error creating Infrastructure conditions for policy %s: %s",
+                policyId,
+                payload),
+                e);
         }
     }
 }
