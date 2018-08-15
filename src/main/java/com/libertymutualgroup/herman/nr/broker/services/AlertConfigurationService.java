@@ -54,7 +54,7 @@ public class AlertConfigurationService {
                 ArrayNode infrastructureAlertsConditions = getInfrastructureAlertsConditions(configuration);
 
                 Assert.isTrue(
-                    applicationAlertsConditions != null || rdsPluginAlertsConditions != null || nrqlAlertsConditions != null,
+                    applicationAlertsConditions != null || rdsPluginAlertsConditions != null || nrqlAlertsConditions != null || infrastructureAlertsConditions != null,
                     "There are no alerts conditions defined");
 
                 // Delete existing policies and channels
