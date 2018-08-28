@@ -52,7 +52,14 @@ public class NewRelicClient {
     RestTemplate newRelicInfrastructureRestTemplate;
 
     @Autowired
+    @Qualifier("synthetics")
+    RestTemplate newRelicSyntheticsTemplate;
+
+    @Autowired
     HttpHeaders httpHeaders;
+
+    @Autowired
+    NewRelicSyntheticsClient newRelicSyntheticsClient;
 
     public Application getApplicationForAppName(String applicationName) {
         LOG.info("Finding New Relic applications with name {}", applicationName);
@@ -387,6 +394,7 @@ public class NewRelicClient {
     }
 
     public void createInfrastructureAlertsConditions(String policyId, JsonNode condition) {
+        LOG.info("Creating infrastructure condition under policy ID {}", policyId);
         ObjectMapper objectMapper = new ObjectMapper();
         ObjectNode data = ((ObjectNode)condition).put("policy_id", Integer.parseInt(policyId));
         ObjectNode payload = objectMapper.createObjectNode();
@@ -405,5 +413,23 @@ public class NewRelicClient {
                 payload),
                 e);
         }
+    }
+
+    public void createSynthetics(JsonNode synthetics, String policyName, String polciyId) {
+        deleteExistingSyntheticsMonitors(policyName);
+        createSyntheticsMonitors(synthetics, policyName);
+        createSyntheticsConditions(policyName, polciyId);
+    }
+
+    private void deleteExistingSyntheticsMonitors(String policyName) {
+        newRelicSyntheticsClient.deleteExistingSyntheticsMonitors(policyName);
+    }
+
+    private void createSyntheticsMonitors(JsonNode synthetics, String policyName) {
+        newRelicSyntheticsClient.createSyntheticsMonitors(synthetics, policyName);
+    }
+
+    private void createSyntheticsConditions(String policyName, String policyId) {
+        newRelicSyntheticsClient.createSyntheticsConditions(policyName, policyId);
     }
 }

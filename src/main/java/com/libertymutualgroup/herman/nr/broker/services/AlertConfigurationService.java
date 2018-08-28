@@ -52,9 +52,14 @@ public class AlertConfigurationService {
                 ArrayNode rdsPluginAlertsConditions = getRdsPluginAlertsConditions(configuration);
                 ArrayNode nrqlAlertsConditions = getNrqlAlertsConditions(configuration);
                 ArrayNode infrastructureAlertsConditions = getInfrastructureAlertsConditions(configuration);
+                ArrayNode synthetics = getSynthetics(configuration);
 
                 Assert.isTrue(
-                    applicationAlertsConditions != null || rdsPluginAlertsConditions != null || nrqlAlertsConditions != null || infrastructureAlertsConditions != null,
+                    applicationAlertsConditions != null
+                        || rdsPluginAlertsConditions != null
+                        || nrqlAlertsConditions != null
+                        || infrastructureAlertsConditions != null
+                        || synthetics != null,
                     "There are no alerts conditions defined");
 
                 // Delete existing policies and channels
@@ -113,7 +118,15 @@ public class AlertConfigurationService {
 
                     brokerUpdates.add(new HermanBrokerUpdate()
                             .withStatus(HermanBrokerStatus.PENDING)
-                            .withMessage(String.format("%s Infrastructure alerts conditions created", infrastructureAlertsConditions.size(), infrastructureAlertsConditions.size() > 1 ? "s" : "")));
+                            .withMessage(String.format("%s Infrastructure alerts condition%s created", infrastructureAlertsConditions.size(), infrastructureAlertsConditions.size() > 1 ? "s" : "")));
+                }
+
+                if (synthetics != null) {
+                    synthetics.elements().forEachRemaining(condition -> newRelicClient.createSynthetics(condition, policyName, policyId));
+
+                    brokerUpdates.add(new HermanBrokerUpdate()
+                            .withStatus(HermanBrokerStatus.PENDING)
+                            .withMessage(String.format("%Synthetics Monitor%s created", synthetics.size(), synthetics.size() > 1 ? "s" : "")));
                 }
 
                 // Create alerts policy channels
@@ -220,6 +233,20 @@ public class AlertConfigurationService {
             return getInfrastructureConditions;
         } catch (Exception e) {
             throw new RuntimeException("Error getting Infrastructure alerts conditions", e);
+        }
+    }
+
+    private ArrayNode getSynthetics(NewRelicConfiguration configuration) {
+        try {
+            ObjectMapper objectMapper = new ObjectMapper();
+
+            ArrayNode getSynthetics = null;
+            if (configuration.getSynthetics() != null) {
+                getSynthetics = objectMapper.readValue(configuration.getSynthetics(), ArrayNode.class);
+            }
+            return getSynthetics;
+        } catch (Exception e) {
+            throw new RuntimeException("Error getting Synthetics", e);
         }
     }
 }
