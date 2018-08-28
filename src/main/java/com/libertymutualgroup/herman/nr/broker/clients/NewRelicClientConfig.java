@@ -23,9 +23,11 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 import org.springframework.http.HttpHeaders;
+import org.springframework.retry.annotation.EnableRetry;
 import org.springframework.web.client.RestTemplate;
 
 @Configuration
+@EnableRetry
 public class NewRelicClientConfig {
 
     @Autowired
@@ -42,6 +44,12 @@ public class NewRelicClientConfig {
     @Qualifier("infra")
     RestTemplate newRelicInfrastructureRestTemplate() {
         return new RestTemplateBuilder().rootUri("https://infra-api.newrelic.com/v2/").build();
+    }
+
+    @Bean
+    @Qualifier("synthetics")
+    RestTemplate newRelicSyntheticsTemplate() {
+        return new RestTemplateBuilder().rootUri("https://synthetics.newrelic.com/synthetics/api/v3").build();
     }
 
     @Bean
