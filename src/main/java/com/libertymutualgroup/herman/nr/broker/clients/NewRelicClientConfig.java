@@ -42,7 +42,7 @@ public class NewRelicClientConfig {
 
     @Bean
     @Qualifier("infra")
-    RestTemplate newRelicInfrastructureRestTemplate() {
+    RestTemplate newRelicInfraRestTemplate() {
         return new RestTemplateBuilder().rootUri("https://infra-api.newrelic.com/v2/").build();
     }
 
