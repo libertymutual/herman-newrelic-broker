@@ -26,7 +26,6 @@ import com.libertymutualgroup.herman.nr.broker.domain.newRelic.Application;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -38,7 +37,8 @@ public class AlertConfigurationService {
     @Autowired
     NewRelicClient newRelicClient;
 
-    public List<HermanBrokerUpdate> configureAlerts(Application application, String policyName, NewRelicConfiguration configuration) {
+    public List<HermanBrokerUpdate> configureAlerts(Application application, String policyName,
+        NewRelicConfiguration configuration) {
         try {
             List<HermanBrokerUpdate> brokerUpdates = new ArrayList<>();
             if (configuration != null && configuration.getChannels() != null) {
@@ -49,14 +49,14 @@ public class AlertConfigurationService {
 
                 // Optional property values
                 ArrayNode applicationAlertsConditions = getApplicationAlertsConditions(configuration);
-                ArrayNode rdsPluginAlertsConditions = getRdsPluginAlertsConditions(configuration);
+                ArrayNode pluginAlertsConditions = getPluginAlertsConditions(configuration);
                 ArrayNode nrqlAlertsConditions = getNrqlAlertsConditions(configuration);
                 ArrayNode infrastructureAlertsConditions = getInfrastructureAlertsConditions(configuration);
                 ArrayNode synthetics = getSynthetics(configuration);
 
                 Assert.isTrue(
                     applicationAlertsConditions != null
-                        || rdsPluginAlertsConditions != null
+                        || pluginAlertsConditions != null
                         || nrqlAlertsConditions != null
                         || infrastructureAlertsConditions != null
                         || synthetics != null,
@@ -74,66 +74,69 @@ public class AlertConfigurationService {
                 String policyId = newRelicClient.createPolicy(policyName);
 
                 brokerUpdates.add(new HermanBrokerUpdate()
-                        .withStatus(HermanBrokerStatus.PENDING)
-                        .withMessage("Alerts policy created: ID = " + policyId));
+                    .withStatus(HermanBrokerStatus.PENDING)
+                    .withMessage("Alerts policy created: ID = " + policyId));
 
                 // Create application alerts conditions
                 if (applicationAlertsConditions != null && application != null) {
-                    createApplicationAlertsConditions(application.getId(), objectMapper, applicationAlertsConditions, policyId);
+                    createApplicationAlertsConditions(application.getId(), objectMapper, applicationAlertsConditions,
+                        policyId);
 
                     brokerUpdates.add(new HermanBrokerUpdate()
-                            .withStatus(HermanBrokerStatus.PENDING)
-                            .withMessage(String.format("%s alerts condition%s created", applicationAlertsConditions.size(), applicationAlertsConditions.size() > 1 ? "s" : "")));
+                        .withStatus(HermanBrokerStatus.PENDING)
+                        .withMessage(String.format("%s alerts condition%s created", applicationAlertsConditions.size(),
+                            applicationAlertsConditions.size() > 1 ? "s" : "")));
                 }
 
-                // Create RDS plugin alerts conditions
-                if (rdsPluginAlertsConditions != null) {
-                    String dbName = Optional.ofNullable(configuration.getDbName()).orElse(policyName);
-                    String databaseEntityId = newRelicClient.getEntityIdForComponentName("db:" + dbName);
-                    if (databaseEntityId != null) {
-                        createPluginsConditions(objectMapper, rdsPluginAlertsConditions, policyId, databaseEntityId);
+                // Create plugin alerts conditions
+                if (pluginAlertsConditions != null) {
+                    pluginAlertsConditions.elements()
+                        .forEachRemaining(condition -> newRelicClient.createPluginsCondition(policyId, condition));
 
-                        brokerUpdates.add(new HermanBrokerUpdate()
-                                .withStatus(HermanBrokerStatus.PENDING)
-                                .withMessage(String.format("%s RDS plugin alerts condition%s created", rdsPluginAlertsConditions.size(), rdsPluginAlertsConditions.size() > 1 ? "s" : "")));
-                    } else {
-                        brokerUpdates.add(new HermanBrokerUpdate()
-                                .withStatus(HermanBrokerStatus.PENDING)
-                                .withMessage(String.format("RDS plugin alerts conditions were not created because DB %s could not be found. Continuing...", dbName)));
-                    }
+                    brokerUpdates.add(new HermanBrokerUpdate()
+                        .withStatus(HermanBrokerStatus.PENDING)
+                        .withMessage(String
+                            .format("%s plugin alerts condition%s created", pluginAlertsConditions.size(),
+                                pluginAlertsConditions.size() > 1 ? "s" : "")));
                 }
 
                 // Create NRQL alerts conditions
                 if (nrqlAlertsConditions != null) {
-                    nrqlAlertsConditions.elements().forEachRemaining(condition -> newRelicClient.createNrqlAlertsConditions(policyId, condition));
+                    nrqlAlertsConditions.elements()
+                        .forEachRemaining(condition -> newRelicClient.createNrqlAlertsConditions(policyId, condition));
 
                     brokerUpdates.add(new HermanBrokerUpdate()
-                            .withStatus(HermanBrokerStatus.PENDING)
-                            .withMessage(String.format("%s NRQL alerts condition%s created", nrqlAlertsConditions.size(), nrqlAlertsConditions.size() > 1 ? "s" : "")));
+                        .withStatus(HermanBrokerStatus.PENDING)
+                        .withMessage(String.format("%s NRQL alerts condition%s created", nrqlAlertsConditions.size(),
+                            nrqlAlertsConditions.size() > 1 ? "s" : "")));
                 }
 
-                // Create Infrastructure alerts conditions
                 if (infrastructureAlertsConditions != null) {
-                    infrastructureAlertsConditions.elements().forEachRemaining(condition -> newRelicClient.createInfrastructureAlertsConditions(policyId, condition));
+                    infrastructureAlertsConditions.elements()
+                        .forEachRemaining(condition -> newRelicClient.createInfraAlertsConditions(policyId, condition));
 
                     brokerUpdates.add(new HermanBrokerUpdate()
-                            .withStatus(HermanBrokerStatus.PENDING)
-                            .withMessage(String.format("%s Infrastructure alerts condition%s created", infrastructureAlertsConditions.size(), infrastructureAlertsConditions.size() > 1 ? "s" : "")));
+                        .withStatus(HermanBrokerStatus.PENDING)
+                        .withMessage(String.format("%s Infrastructure alerts condition%s created",
+                            infrastructureAlertsConditions.size(),
+                            infrastructureAlertsConditions.size() > 1 ? "s" : "")));
                 }
 
                 if (synthetics != null) {
-                    synthetics.elements().forEachRemaining(condition -> newRelicClient.createSynthetics(condition, policyName, policyId));
+                    synthetics.elements().forEachRemaining(
+                        condition -> newRelicClient.createSynthetics(condition, policyName, policyId));
 
                     brokerUpdates.add(new HermanBrokerUpdate()
-                            .withStatus(HermanBrokerStatus.PENDING)
-                            .withMessage(String.format("%Synthetics Monitor%s created", synthetics.size(), synthetics.size() > 1 ? "s" : "")));
+                        .withStatus(HermanBrokerStatus.PENDING)
+                        .withMessage(String.format("%s Synthetics Monitor%s created", synthetics.size(),
+                            synthetics.size() > 1 ? "s" : "")));
                 }
 
                 // Create alerts policy channels
                 Set<String> channelIds = new HashSet<>();
                 channels.elements().forEachRemaining(channel -> {
                     String channelName = channel.get("name").asText();
-                    ((ObjectNode)channel).put("name", String.format("%s-%s", policyName, channelName));
+                    ((ObjectNode) channel).put("name", String.format("%s-%s", policyName, channelName));
                     channelIds.add(newRelicClient.createChannel(channel));
                 });
 
@@ -141,13 +144,14 @@ public class AlertConfigurationService {
                 newRelicClient.addChannelsToPolicy(channelIds, policyId);
 
                 brokerUpdates.add(new HermanBrokerUpdate()
-                        .withStatus(HermanBrokerStatus.PENDING)
-                        .withMessage(String.format("%s alerts policy channel%s created", channelIds.size(), channelIds.size() > 1 ? "s" : "")));
+                    .withStatus(HermanBrokerStatus.PENDING)
+                    .withMessage(String.format("%s alerts policy channel%s created", channelIds.size(),
+                        channelIds.size() > 1 ? "s" : "")));
 
             } else {
                 brokerUpdates.add(new HermanBrokerUpdate()
-                        .withStatus(HermanBrokerStatus.PENDING)
-                        .withMessage("Alert configuration is not defined in the Herman template file"));
+                    .withStatus(HermanBrokerStatus.PENDING)
+                    .withMessage("Alert configuration is not defined in the Herman template file"));
             }
 
             return brokerUpdates;
@@ -158,23 +162,12 @@ public class AlertConfigurationService {
         }
     }
 
-    private void createPluginsConditions(ObjectMapper objectMapper, ArrayNode rdsPluginsConditions, String policyId,
-        String databaseEntityId) {
-        ObjectNode plugin = newRelicClient.getRdsPlugin(objectMapper);
-
-        rdsPluginsConditions.elements().forEachRemaining(rdsPluginsCondition -> {
-            ArrayNode entities = objectMapper.createArrayNode().add(databaseEntityId);
-            ((ObjectNode)rdsPluginsCondition).set("entities", entities);
-            ((ObjectNode)rdsPluginsCondition).set("plugin", plugin);
-            newRelicClient.createPluginsCondition(policyId, rdsPluginsCondition);
-        });
-    }
-
-    private void createApplicationAlertsConditions(Integer applicationId, ObjectMapper objectMapper, ArrayNode conditions,
+    private void createApplicationAlertsConditions(Integer applicationId, ObjectMapper objectMapper,
+        ArrayNode conditions,
         String policyId) {
         conditions.elements().forEachRemaining(condition -> {
             ArrayNode entities = objectMapper.createArrayNode().add(applicationId.toString());
-            ((ObjectNode)condition).set("entities", entities);
+            ((ObjectNode) condition).set("entities", entities);
             newRelicClient.createApplicationAlertsConditions(policyId, condition);
         });
     }
@@ -192,18 +185,18 @@ public class AlertConfigurationService {
         }
     }
 
-    private ArrayNode getRdsPluginAlertsConditions(NewRelicConfiguration configuration) {
+    private ArrayNode getPluginAlertsConditions(NewRelicConfiguration configuration) {
         try {
             ObjectMapper objectMapper = new ObjectMapper();
 
-            ArrayNode rdsPluginsConditions = null;
-            if (configuration.getRdsPluginsConditions() != null) {
-                rdsPluginsConditions = objectMapper.readValue(configuration.getRdsPluginsConditions(), ArrayNode.class);
+            ArrayNode pluginsConditions = null;
+            if (configuration.getPluginConditions() != null) {
+                pluginsConditions = objectMapper.readValue(configuration.getPluginConditions(), ArrayNode.class);
             }
-            return rdsPluginsConditions;
+            return pluginsConditions;
 
         } catch (Exception ex) {
-            throw new RuntimeException("Error getting RDS plugin alerts conditions", ex);
+            throw new RuntimeException("Error getting plugin alerts conditions", ex);
         }
     }
 
@@ -225,14 +218,15 @@ public class AlertConfigurationService {
     private ArrayNode getInfrastructureAlertsConditions(NewRelicConfiguration configuration) {
         try {
             ObjectMapper objectMapper = new ObjectMapper();
-            ArrayNode getInfrastructureConditions = null;
 
+            ArrayNode getInfrastructureConditions = null;
             if (configuration.getInfrastructureConditions() != null) {
-                getInfrastructureConditions = objectMapper.readValue(configuration.getInfrastructureConditions(), ArrayNode.class);
+                getInfrastructureConditions = objectMapper
+                    .readValue(configuration.getInfrastructureConditions(), ArrayNode.class);
             }
             return getInfrastructureConditions;
         } catch (Exception e) {
-            throw new RuntimeException("Error getting Infrastructure alerts conditions", e);
+            throw new RuntimeException("Error getting Infrastructure alerts coinditions", e);
         }
     }
 

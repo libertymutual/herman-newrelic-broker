@@ -41,7 +41,6 @@ import org.springframework.web.client.RestTemplate;
 public class NewRelicClient {
 
     private static final Logger LOG = LoggerFactory.getLogger(NewRelicClient.class);
-    private static final String RDS_PLUGIN_GUID = "com.newrelic.aws.rds";
 
     @Autowired
     @Qualifier("nr")
@@ -49,7 +48,7 @@ public class NewRelicClient {
 
     @Autowired
     @Qualifier("infra")
-    RestTemplate newRelicInfrastructureRestTemplate;
+    RestTemplate newRelicInfraRestTemplate;
 
     @Autowired
     @Qualifier("synthetics")
@@ -70,9 +69,11 @@ public class NewRelicClient {
             new HttpEntity<>(httpHeaders),
             ListApplicationsResponse.class);
 
-        LOG.info("Found New Relic applications with name {}: {}", applicationName, listApplicationsResponseEntity.getBody());
+        LOG.info("Found New Relic applications with name {}: {}", applicationName,
+            listApplicationsResponseEntity.getBody());
 
-        if (listApplicationsResponseEntity.getBody() != null && !listApplicationsResponseEntity.getBody().getApplications().isEmpty()) {
+        if (listApplicationsResponseEntity.getBody() != null && !listApplicationsResponseEntity.getBody()
+            .getApplications().isEmpty()) {
             return listApplicationsResponseEntity.getBody().getApplications().stream()
                 .filter(application -> applicationName.equals(application.getName()))
                 .findAny()
@@ -82,7 +83,8 @@ public class NewRelicClient {
         }
     }
 
-    public CreateApplicationDeploymentResponse createApplicationDeployment(Integer applicationId, CreateApplicationDeploymentRequest createApplicationDeploymentRequest) {
+    public CreateApplicationDeploymentResponse createApplicationDeployment(Integer applicationId,
+        CreateApplicationDeploymentRequest createApplicationDeploymentRequest) {
         return newRelicRestTemplate
             .exchange(
                 String.format("/applications/%s/deployments.json", applicationId),
@@ -245,7 +247,8 @@ public class NewRelicClient {
 
     public void createApplicationAlertsConditions(String policyId, JsonNode condition) {
         if (LOG.isInfoEnabled()) {
-            LOG.info("Creating application alerts condition with name {} under policy ID {}", condition.get("name").asText(), policyId);
+            LOG.info("Creating application alerts condition with name {} under policy ID {}",
+                condition.get("name").asText(), policyId);
         }
 
         ObjectMapper objectMapper = new ObjectMapper();
@@ -267,16 +270,16 @@ public class NewRelicClient {
         }
     }
 
-    public void createPluginsCondition(String policyId, JsonNode rdsPluginsCondition) {
+    public void createPluginsCondition(String policyId, JsonNode pluginsCondition) {
         if (LOG.isInfoEnabled()) {
             LOG.info("Creating plugins condition with name {} under policy ID {}",
-                rdsPluginsCondition.get("name").asText(),
+                pluginsCondition.get("name").asText(),
                 policyId);
         }
 
         ObjectMapper objectMapper = new ObjectMapper();
         ObjectNode payload = objectMapper.createObjectNode();
-        payload.set("plugins_condition", rdsPluginsCondition);
+        payload.set("plugins_condition", pluginsCondition);
 
         try {
             newRelicRestTemplate
@@ -352,26 +355,6 @@ public class NewRelicClient {
                 Void.class);
     }
 
-    public ObjectNode getRdsPlugin(ObjectMapper objectMapper) {
-        JsonNode response = newRelicRestTemplate
-            .exchange(
-                String.format("/plugins.json?filter[guid]=%s", RDS_PLUGIN_GUID),
-                HttpMethod.GET,
-                new HttpEntity<>(httpHeaders),
-                JsonNode.class)
-            .getBody();
-
-        ObjectNode plugin = objectMapper.createObjectNode();
-        plugin.put("id", response.get("plugins").get(0).get("id").asText());
-        plugin.put("guid", RDS_PLUGIN_GUID);
-
-        if (LOG.isInfoEnabled()) {
-            LOG.info("RDS plugin found: {}", plugin);
-        }
-
-        return plugin;
-    }
-
     public void createNrqlAlertsConditions(String policyId, JsonNode condition) {
         ObjectMapper objectMapper = new ObjectMapper();
         ObjectNode payload = objectMapper.createObjectNode();
@@ -393,20 +376,21 @@ public class NewRelicClient {
         }
     }
 
-    public void createInfrastructureAlertsConditions(String policyId, JsonNode condition) {
+    public void createInfraAlertsConditions(String policyId, JsonNode condition) {
         LOG.info("Creating infrastructure condition under policy ID {}", policyId);
         ObjectMapper objectMapper = new ObjectMapper();
-        ObjectNode data = ((ObjectNode)condition).put("policy_id", Integer.parseInt(policyId));
+        ObjectNode data = ((ObjectNode) condition).put("policy_id", Integer.parseInt(policyId));
         ObjectNode payload = objectMapper.createObjectNode();
         payload.set("data", data);
 
         try {
-            newRelicInfrastructureRestTemplate.exchange(
-                "/alerts/conditions",
-                HttpMethod.POST,
-                new HttpEntity<JsonNode>(payload, httpHeaders),
-                Void.class
-            );
+            newRelicInfraRestTemplate
+                .exchange(
+                    "/alerts/conditions",
+                    HttpMethod.POST,
+                    new HttpEntity<JsonNode>(payload, httpHeaders),
+                    Void.class
+                );
         } catch (Exception e) {
             throw new RuntimeException(String.format("Error creating Infrastructure conditions for policy %s: %s",
                 policyId,
